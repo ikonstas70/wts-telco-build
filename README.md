@@ -363,6 +363,33 @@ All 10 VMs configured, SYNC NICs wired in VMX files, /etc/hosts deployed, IP con
 
 ## Phase 2 — Security & Monitoring
 
+### Zabbix Agent2
+
+Zabbix Agent2 is installed and active on all externally-accessible VMs. It reports to the Zabbix server on monitor-01.
+
+```bash
+# Install Zabbix 6.4 agent2 from the official repository
+wget https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb
+dpkg -i zabbix-release_6.4-1+ubuntu22.04_all.deb
+apt-get update && apt-get install -y zabbix-agent2
+
+# Minimal agent2 config (no AllowKey stanzas — they conflict with Zabbix 6.4 key access rules)
+cat > /etc/zabbix/zabbix_agent2.conf << 'ZCONF'
+Server=<MONITOR_IP>
+ServerActive=<MONITOR_IP>
+Hostname=<VM_HOSTNAME>
+LogFile=/var/log/zabbix/zabbix_agent2.log
+LogFileSize=10
+PidFile=/var/run/zabbix/zabbix_agent2.pid
+ControlSocket=/tmp/agent.sock
+Timeout=10
+ZCONF
+
+systemctl enable zabbix-agent2 && systemctl restart zabbix-agent2
+```
+
+**Config note:** In Zabbix 6.4, adding `AllowKey=*.*` patterns without a corresponding `DenyKey` causes a startup failure: *"Item key access rules are configured to match all keys."* Leave AllowKey out entirely — the default allows all keys.
+
 ### OSSEC HIDS
 
 OSSEC runs on a server/agent model:
@@ -370,17 +397,47 @@ OSSEC runs on a server/agent model:
 - **monitor-01** is the OSSEC server — receives events from all 9 agents, correlates alerts, sends notifications
 - All 9 other VMs run OSSEC agents — report file integrity events, log anomalies, brute-force detections
 
+**Important:** Build OSSEC from source once on the monitoring node, then distribute the pre-compiled binary to agent VMs. Compiling OSSEC from source on each VM simultaneously consumes significant CPU/RAM and can cause the VM to become unresponsive on limited hardware.
+
+```bash
+# On monitor (build once)
+OSSEC_VER=3.7.0
+wget https://github.com/ossec/ossec-hids/archive/${OSSEC_VER}.tar.gz -O ossec.tar.gz
+tar -xzf ossec.tar.gz && cd ossec-hids-${OSSEC_VER}
+printf "server\n\ny\n\ny\ny\n\n\n\n" | ./install.sh
+
+# On each agent VM — import pre-compiled binary, no recompile needed
+# (use manage_agents on server to generate keys, then import on each agent)
+printf "agent\n\ny\n<MONITOR_IP>\ny\ny\n\n\n\n" | ./install.sh
+```
+
 Monitored directories: `/etc`, `/bin`, `/sbin`, `/usr/bin`, `/usr/sbin`  
 Active response: auto-block attacking source IPs via local firewall rules within seconds of threshold breach  
 Alerts: email on every Level 7+ security event
 
-### Zabbix Monitoring
+### Zabbix Server
 
+Zabbix server runs on monitor-01 with a local MariaDB backend.
+
+```bash
+apt-get install -y zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts
+
+# Create Zabbix database
+mysql -u root << 'SQL'
+CREATE DATABASE zabbix CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+CREATE USER 'zabbix'@'localhost' IDENTIFIED BY '<strong-password>';
+GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'localhost';
+SQL
+
+# Import schema
+zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql -u zabbix -p<password> zabbix
+```
+
+Monitor targets:
 - **ISP connectivity** — continuous ping to external resolver; alert on sustained packet loss
 - **SIP health** — OPTIONS ping to each Kamailio node; alert if no 200 OK within threshold
 - **Database health** — MariaDB connection check on each node
 - **Resource thresholds** — CPU, RAM, disk alerts before service impact
-- **Agent2** on all VMs — active checks with encrypted transport
 
 ---
 
@@ -401,13 +458,39 @@ Carrier negotiation in North America defaults to G.711 μ-law. The internal Voic
 | Phase | Status | Scope |
 |-------|--------|-------|
 | 1 — Hypervisor & VMs | ✅ Complete | vSwitches, golden image, 10 VMs cloned and configured |
-| 2 — Security & Monitoring | 🔄 In progress | OSSEC server + agents, Zabbix, fail2ban |
+| 2 — Security & Monitoring | 🔄 In progress | OSSEC server + agents, Zabbix 6.4, OpenSearch log aggregation |
 | 3 — Database | Pending | MariaDB replication via Sync network |
 | 4 — SIP Proxy | Pending | Kamailio config, LCR, dispatcher, TLS, clustering |
 | 5 — PBX | Pending | Asterisk PJSIP, dialplan, CDR, call recording |
 | 6 — Billing | Pending | A2Billing engine, rate tables, customer portal |
-| 7 — Cloud Integration | Pending | WireGuard tunnel, SIP federation, DNS failover |
-| 8 — Phones | Pending | VoIP phone VLANs, QoS (DSCP/802.1p), SIP registration |
+| 7 — Cloud Integration | Pending | WireGuard VPN + GRE tunnels, SIP federation, DNS failover |
+| 8 — Phones & Segmentation | Pending | VoIP VLANs, QoS, Cisco firewall zone segmentation |
+| 9 — Routing Fabric | Planned | BGP leaf-spine with CSR1000v spine nodes, ECMP for SIP |
+
+### Phase 7 — GRE Tunnel Design (Planned)
+
+GRE tunnels are planned at the SIP proxy layer to carry encapsulated SIP/RTP between local and cloud infrastructure:
+
+```
+Local Kamailio (leaf)  ──GRE──►  Cloud Kamailio (spine)
+       │                                   │
+  WireGuard (mgmt)              WireGuard (mgmt)
+```
+
+Each Kamailio node acts as a GRE leaf endpoint. The GRE tunnel carries SIP/RTP traffic while WireGuard provides the encrypted management plane. This separates the data plane (GRE, high throughput, low overhead) from the control plane (WireGuard, encrypted, authenticated).
+
+### Phase 9 — BGP Leaf-Spine (Planned)
+
+BGP routing fabric using existing CSR1000v virtual routers as spine nodes:
+
+```
+        [CSR Spine-01]  ──eBGP──  [CSR Spine-02]
+           /      \                   /      \
+  [Kamailio-01]  [Kamailio-02]   [Asterisk-01..03]
+   (leaf / AS 65001)               (leaf / AS 65002)
+```
+
+Each leaf node advertises its SIP route prefix via eBGP. The spine provides ECMP load balancing across Kamailio nodes. This enables carrier-grade call routing with sub-second convergence on failover.
 
 ---
 
