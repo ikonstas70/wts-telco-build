@@ -266,6 +266,99 @@ configure_vm <ID> monitor-01   <IP>
 **Why reset machine-id?**  
 Systemd uses `/etc/machine-id` as the DHCP client identifier and for D-Bus addressing. All clones inherit the golden image ID, causing ID collisions that affect network identity and log rotation. `systemd-machine-id-setup` generates a new unique ID from hardware entropy.
 
+### 6. Add Cluster Sync NICs
+
+The SYNC vSwitch needs NICs added to the VMX for the VMs that participate in clustering and replication:
+
+```bash
+# Kamailio VMs: add SYNC NIC for cluster heartbeat
+for VM in kamailio-01 kamailio-02; do
+  cat >> <DATASTORE>/$VM/$VM.vmx << 'EOF'
+ethernet2.present = "TRUE"
+ethernet2.virtualDev = "vmxnet3"
+ethernet2.networkName = "SYNC"
+ethernet2.addressType = "generated"
+EOF
+done
+
+# MariaDB VMs: add SYNC NIC for replication traffic
+for VM in mariadb-01 mariadb-02; do
+  cat >> <DATASTORE>/$VM/$VM.vmx << 'EOF'
+ethernet1.present = "TRUE"
+ethernet1.virtualDev = "vmxnet3"
+ethernet1.networkName = "SYNC"
+ethernet1.addressType = "generated"
+EOF
+done
+```
+
+### 7. Resolve IP Conflicts
+
+**Lesson learned:** Before assigning IPs to VMs, scan the network for existing devices using those addresses. Managed switches often have VLAN SVI (Switched Virtual Interface) addresses in the same subnet. A VM and a switch SVI at the same IP creates an ARP conflict — the switch wins for external connections, making the VM unreachable from outside.
+
+```bash
+# Scan for existing hosts before assigning VM IPs
+for ip in $(seq 10 60); do
+  if ping -c 1 -W 1 192.168.200.$ip &>/dev/null; then
+    echo "192.168.200.$ip is already in use"
+    ssh -o ConnectTimeout=2 admin@192.168.200.$ip "show version" 2>/dev/null | head -1
+  fi
+done
+```
+
+When a conflict is found, reassign the VM to a clean IP via netplan:
+
+```bash
+# Reach the VM via ProxyJump through another VM on the same L2 segment
+ssh -o ProxyCommand="ssh -i <KEY> -o StrictHostKeyChecking=no <USER>@<PROXY_VM> -W %h:%p" \
+    -i <KEY> <USER>@<CONFLICTED_IP> \
+    "sudo sed -i 's/<OLD_IP>/<NEW_IP>/g' /etc/netplan/00-installer-config.yaml && sudo netplan apply"
+```
+
+### 8. /etc/hosts on All VMs
+
+Push hostname resolution to every node for internal name lookups:
+
+```bash
+HOSTS_BLOCK="
+# Telco Build Internal
+<IP>  kamailio-01
+<IP>  kamailio-02
+<IP>  asterisk-01
+<IP>  asterisk-02
+<IP>  asterisk-03
+<IP>  a2billing-01
+<IP>  a2billing-02
+<IP>  mariadb-01
+<IP>  mariadb-02
+<IP>  monitor-01"
+
+for IP in <list_of_vm_ips>; do
+  ssh -i <KEY> <USER>@$IP \
+    "grep -q 'Telco Build Internal' /etc/hosts || echo '$HOSTS_BLOCK' | sudo tee -a /etc/hosts > /dev/null" &
+done
+wait
+```
+
+---
+
+## Phase 1 — Complete
+
+All 10 VMs configured, SYNC NICs wired in VMX files, /etc/hosts deployed, IP conflicts resolved. Phase 1 infrastructure is complete.
+
+| VM | Status | Note |
+|----|--------|------|
+| kamailio-01 | ✅ | SIP proxy primary |
+| kamailio-02 | ✅ | SIP proxy secondary |
+| asterisk-01 | ✅ | IP adjusted to avoid switch SVI conflict |
+| asterisk-02 | ✅ | |
+| asterisk-03 | ✅ | |
+| a2billing-01 | ✅ | |
+| a2billing-02 | ✅ | |
+| mariadb-01 | ✅ | DATA-only network, no external access |
+| mariadb-02 | ✅ | DATA-only network, no external access |
+| monitor-01 | ✅ | OSSEC server + Zabbix — Phase 2 target |
+
 ---
 
 ## Phase 2 — Security & Monitoring
