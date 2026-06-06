@@ -1,6 +1,6 @@
-# Telco Build — Open CLEC Infrastructure Stack
+# Telco Build — Open Carrier Infrastructure Stack
 
-A production-grade **CLEC (Competitive Local Exchange Carrier)** infrastructure built from the ground up on a local virtualization platform. This repository is an educational build log covering architecture decisions, network design, VM cloning methodology, security hardening, and telecom service stack configuration.
+A production-grade carrier telecom infrastructure built from the ground up on a local virtualization platform. This repository is an educational build log covering architecture decisions, network design, VM cloning methodology, security hardening, and telecom service stack configuration.
 
 Everything here is vendor-neutral where possible. All IPs, hostnames, and environment-specific values are replaced with `<placeholders>`.
 
