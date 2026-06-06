@@ -3,254 +3,161 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Open-source educational build log for a production-grade carrier telecom infrastructure: Kamailio, Asterisk, A2Billing, MariaDB, OSSEC, Zabbix on isolated virtual networks.">
+<meta name="description" content="Open-source educational build log: production-grade carrier telecom infrastructure — Kamailio SIP proxy with LCR, Asterisk PBX, A2Billing, MariaDB HA, OSSEC, Zabbix, OpenSearch, GRE tunnels, BGP leaf-spine.">
 <meta property="og:title" content="Telco Build — Open Carrier Infrastructure Stack">
-<meta property="og:description" content="10-VM telecom stack build log: SIP proxy, PBX, billing, database HA, security monitoring on isolated virtual networks with MTU 9000 jumbo frames.">
+<meta property="og:description" content="10-VM carrier telecom build log: SIP/LCR proxy, real-time billing, DB replication, security monitoring, GRE tunnels, BGP routing fabric — fully open-source on isolated virtual networks.">
 <title>Telco Build — Open Carrier Infrastructure Stack</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-
+  :root {
+    --bg: #0d0d0d;
+    --surface: #111;
+    --surface2: #161b22;
+    --border: #1e1e26;
+    --text: #c8d0d8;
+    --dim: #606878;
+    --accent: #3b82f6;
+    --green: #4caf50;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+    --purple: #8b5cf6;
+    --orange: #f97316;
+  }
   body {
-    background: #0d0d0d;
-    color: #c8c8c8;
+    background: var(--bg);
+    color: var(--text);
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 15px;
     line-height: 1.7;
   }
-
   header {
-    background: #111;
-    border-bottom: 1px solid #222;
-    padding: 28px 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
   }
+  header h1 { font-size: 1.25rem; font-weight: 700; color: #e8eaf0; letter-spacing: -0.3px; }
+  .badge { background: #1a3520; color: var(--green); border: 1px solid #2a5030; padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
 
-  header h1 {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: #e8e8e8;
-    letter-spacing: -0.3px;
-  }
+  .container { max-width: 1060px; margin: 0 auto; padding: 40px 40px 80px; }
 
-  header .badge {
-    background: #1a3a1a;
-    color: #4caf50;
-    border: 1px solid #2d5a2d;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
+  .hero { padding: 44px 0 36px; border-bottom: 1px solid var(--border); margin-bottom: 44px; }
+  .hero h2 { font-size: 1.6rem; font-weight: 700; color: #eaeef4; margin-bottom: 14px; border: none; padding: 0; }
+  .hero p { color: #8090a0; max-width: 740px; margin-bottom: 20px; line-height: 1.8; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; }
+  .tag { background: var(--surface2); border: 1px solid #282e38; color: #6880a0; padding: 3px 10px; border-radius: 12px; font-size: 0.76rem; }
 
-  .container {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 40px 40px 80px;
-  }
-
-  .hero {
-    padding: 40px 0 32px;
-    border-bottom: 1px solid #1e1e1e;
-    margin-bottom: 40px;
-  }
-
-  .hero p {
-    color: #888;
-    max-width: 680px;
-    margin-top: 10px;
-  }
-
-  .tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 18px;
-  }
-
-  .tag {
-    background: #161b22;
-    border: 1px solid #282e38;
-    color: #8b98a8;
-    padding: 3px 10px;
-    border-radius: 12px;
-    font-size: 0.78rem;
-  }
-
-  h2 {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #e0e0e0;
-    margin: 36px 0 16px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #1e1e1e;
-  }
-
-  h3 {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #c8c8c8;
-    margin: 24px 0 10px;
-  }
-
+  h2 { font-size: 1.1rem; font-weight: 700; color: #dde4ee; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 0.96rem; font-weight: 700; color: #b0bcc8; margin: 28px 0 10px; }
   p { margin-bottom: 12px; }
-
   a { color: #58a6ff; text-decoration: none; }
   a:hover { text-decoration: underline; }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 16px 0 24px;
-    font-size: 0.9rem;
-  }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 24px; font-size: 0.88rem; }
+  th { background: var(--surface2); color: #7080a0; text-align: left; padding: 9px 14px; font-weight: 700; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #282e38; }
+  td { padding: 9px 14px; border-bottom: 1px solid #17191e; color: #a0aab8; vertical-align: middle; }
+  tr:hover td { background: #121318; }
 
-  th {
-    background: #161b22;
-    color: #8b98a8;
-    text-align: left;
-    padding: 8px 14px;
-    font-weight: 600;
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    border-bottom: 1px solid #282e38;
-  }
-
-  td {
-    padding: 9px 14px;
-    border-bottom: 1px solid #1a1a1a;
-    color: #b0b8c0;
-  }
-
-  tr:hover td { background: #121212; }
-
-  .status-done { color: #4caf50; font-weight: 600; }
-  .status-progress { color: #f59e0b; font-weight: 600; }
-  .status-pending { color: #555; }
+  .status-done { color: var(--green); font-weight: 700; }
+  .status-progress { color: var(--yellow); font-weight: 700; }
+  .status-pending { color: #404858; }
+  .status-planned { color: var(--purple); }
 
   pre {
-    background: #0a0a0a;
-    border: 1px solid #1e1e1e;
+    background: #080a0d;
+    border: 1px solid #1a1e26;
     border-radius: 6px;
-    padding: 18px 20px;
-    overflow-x: auto;
-    margin: 12px 0 20px;
-    font-size: 0.82rem;
-    line-height: 1.6;
-  }
-
-  code {
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
-    color: #a5d6a7;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 16px;
-    margin: 16px 0;
-  }
-
-  .card {
-    background: #111;
-    border: 1px solid #1e1e1e;
-    border-radius: 8px;
     padding: 20px;
+    overflow-x: auto;
+    margin: 14px 0 22px;
+    font-size: 0.8rem;
+    line-height: 1.65;
   }
+  code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; color: #80c8a0; }
+  pre code { color: #90b880; }
+  pre .c  { color: #405040; } /* comment */
+  pre .hl { color: #c8d8b8; } /* highlight */
+  pre .kw { color: #70a0c8; } /* keyword */
 
-  .card h4 {
-    color: #e0e0e0;
-    font-size: 0.95rem;
-    margin-bottom: 8px;
-  }
-
-  .card p {
-    color: #666;
-    font-size: 0.85rem;
-    margin: 0;
-  }
-
-  .network-badge {
-    display: inline-block;
-    padding: 2px 9px;
-    border-radius: 4px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 4px;
-  }
-
-  .net-ext { background: #1a2a1a; color: #4caf50; border: 1px solid #2d4a2d; }
-  .net-voice { background: #1a1a2a; color: #5c9aff; border: 1px solid #2d2d4a; }
-  .net-data { background: #2a1a1a; color: #ff7043; border: 1px solid #4a2d2d; }
-  .net-sync { background: #1a2a2a; color: #26c6da; border: 1px solid #2d4a4a; }
-
-  .arch-diagram {
-    background: #0a0a0a;
-    border: 1px solid #1e1e1e;
+  .arch-box {
+    background: #080a0d;
+    border: 1px solid #1a1e26;
     border-radius: 8px;
-    padding: 24px;
-    font-family: monospace;
-    font-size: 0.82rem;
-    color: #6a8a6a;
+    padding: 26px 30px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.79rem;
+    color: #50607a;
     white-space: pre;
     overflow-x: auto;
+    margin: 14px 0;
+    line-height: 1.55;
+  }
+  .arch-box .g  { color: var(--green); }
+  .arch-box .b  { color: #6090e0; }
+  .arch-box .r  { color: #e06060; }
+  .arch-box .c  { color: var(--cyan); }
+  .arch-box .p  { color: var(--purple); }
+  .arch-box .y  { color: var(--yellow); }
+  .arch-box .w  { color: #d0dce8; }
+  .arch-box .dim { color: #38404a; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; margin: 16px 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+  .card h4 { color: #dce4ee; font-size: 0.92rem; margin-bottom: 8px; font-weight: 700; }
+  .card p { color: #606878; font-size: 0.84rem; margin: 0; line-height: 1.65; }
+
+  .net-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; margin-right: 4px; }
+  .net-ext  { background: #0e200e; color: var(--green); border: 1px solid #1e400e; }
+  .net-voice{ background: #0e0e24; color: #6090e0;      border: 1px solid #1e1e44; }
+  .net-data { background: #240e0e; color: #e06060;      border: 1px solid #440e0e; }
+  .net-sync { background: #0e2024; color: var(--cyan);  border: 1px solid #1e4044; }
+
+  .phases-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 16px 0; }
+  .phase-row { display: flex; align-items: flex-start; padding: 13px 16px; border-bottom: 1px solid var(--border); gap: 14px; }
+  .phase-row:last-child { border-bottom: none; }
+  .phase-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 800; flex-shrink: 0; margin-top: 2px; }
+  .p-done   { background: #1a3520; color: var(--green); }
+  .p-active { background: #2a2210; color: var(--yellow); }
+  .p-pend   { background: #1a1a22; color: #404858; }
+  .p-plan   { background: #1e1428; color: var(--purple); }
+  .phase-info { flex: 1; }
+  .phase-title { font-size: 0.9rem; font-weight: 700; color: #c0ccd8; }
+  .phase-desc  { font-size: 0.82rem; color: #505868; margin-top: 2px; line-height: 1.5; }
+
+  .note-box {
+    background: #0e1420;
+    border: 1px solid #1e2840;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 14px 18px;
     margin: 16px 0;
+    font-size: 0.86rem;
+    color: #7090b0;
   }
 
-  .phase-row {
-    display: flex;
-    align-items: center;
-    padding: 10px 14px;
-    border-bottom: 1px solid #1a1a1a;
-    gap: 16px;
-  }
-
-  .phase-num {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  .phase-done { background: #1a3a1a; color: #4caf50; }
-  .phase-active { background: #2a2a1a; color: #f59e0b; }
-  .phase-pending { background: #1a1a1a; color: #444; }
-
-  .phase-label { flex: 1; font-size: 0.9rem; }
-  .phase-scope { color: #555; font-size: 0.82rem; }
-
-  footer {
-    border-top: 1px solid #1a1a1a;
-    padding: 24px 40px;
-    color: #444;
-    font-size: 0.82rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  footer a { color: #555; }
+  footer { border-top: 1px solid var(--border); padding: 22px 40px; color: #404858; font-size: 0.81rem; display: flex; justify-content: space-between; align-items: center; }
+  footer a { color: #505868; }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>Telco Build — Carrier Infrastructure Stack</h1>
+  <div>
+    <div style="font-size:0.72rem;color:#404858;margin-bottom:4px;letter-spacing:0.08em;text-transform:uppercase;">Ioannis A. Konstas</div>
+    <h1>Telco Build — Carrier Infrastructure Stack</h1>
+  </div>
   <span class="badge">Educational · Open Source</span>
 </header>
 
 <div class="container">
 
   <div class="hero">
-    <h2 style="border:none;margin-top:0;font-size:1.5rem;">Production-grade carrier telecom stack</h2>
-    <p>10-VM open-source infrastructure build log — Kamailio SIP proxy with LCR, Asterisk PBX, A2Billing real-time billing, MariaDB replication, OSSEC intrusion detection, and Zabbix monitoring. Built on isolated virtual networks with MTU 9000 jumbo frames. Fully sanitized for community learning.</p>
+    <h2>Production-grade open carrier telecom stack</h2>
+    <p>Full build log of a 10-VM carrier telecom infrastructure — from hypervisor network isolation to SIP proxy clustering, real-time billing, database high availability, centralized security monitoring, and a planned BGP routing fabric. Built on isolated virtual networks with MTU 9000 jumbo frames. Every value sanitized for community learning.</p>
     <div class="tag-row">
       <span class="tag">kamailio</span>
       <span class="tag">asterisk</span>
@@ -258,196 +165,311 @@
       <span class="tag">mariadb</span>
       <span class="tag">ossec</span>
       <span class="tag">zabbix</span>
-      <span class="tag">sip</span>
-      <span class="tag">voip</span>
-      <span class="tag">lcr</span>
+      <span class="tag">opensearch</span>
+      <span class="tag">gre tunnels</span>
+      <span class="tag">bgp</span>
+      <span class="tag">sip / lcr</span>
       <span class="tag">ubuntu 22.04</span>
-      <span class="tag">linux</span>
+      <span class="tag">voip</span>
     </div>
   </div>
 
-  <h2>Architecture</h2>
+  <!-- ───── ARCHITECTURE ───── -->
+  <h2>Core Architecture</h2>
 
-  <div class="arch-diagram">Internet / SIP Carriers
-         │
-         ▼
- ┌─────────────────────────────────┐
- │   kamailio-01  │  kamailio-02   │  ← LCR: cheapest carrier per prefix
- │   SIP Proxy + Load Balancer     │  ← Cluster heartbeat via Sync network
- └──────────────┬──────────────────┘
-                │ Voice network (MTU 9000, isolated)
-         ┌──────┴────────────────────────────┐
-         │   asterisk-01 · -02 · -03          │
-         │   PBX — load balanced              │
-         └──────┬────────────────────────────┘
-                │ Data network (MTU 9000, isolated)
-         ┌──────┴─────────────────┐
-         │  A2Billing (billing)   │ ← real-time call auth
-         │  MariaDB (CDR + subs)  │ ← replication via Sync network
-         └────────────────────────┘</div>
+  <div class="arch-box"><span class="w">  Internet / SIP Carriers / PSTN Gateways</span>
+          │
+          ▼
+<span class="g">  ┌──────────────────────────────────────────────┐</span>
+<span class="g">  │   kamailio-01            kamailio-02          │</span>  <span class="dim">← Active/Active SIP cluster</span>
+<span class="g">  │   SIP Proxy · LCR        SIP Proxy · Failover │</span>  <span class="dim">← LCR: cheapest carrier per E.164 prefix</span>
+<span class="g">  │   Fraud detect · TLS     Cluster heartbeat     │</span>  <span class="dim">← Cluster state over SYNC network</span>
+<span class="g">  └────────────────┬─────────────────────────────┘</span>
+                   │
+        <span class="b">VOICE — MTU 9000 — no uplink (hypervisor air gap)</span>
+                   │
+<span class="b">  ┌────────────────┴────────────────────────────────────┐</span>
+<span class="b">  │  asterisk-01 · asterisk-02 · asterisk-03            │</span>  <span class="dim">← Dispatcher-balanced PBX pool</span>
+<span class="b">  │  PJSIP trunks · dialplan · CDR logging              │</span>  <span class="dim">← A2Billing AGI: pre-call auth sub-second</span>
+<span class="b">  └────────────────┬────────────────────────────────────┘</span>
+                   │
+        <span class="r">DATA — MTU 9000 — no uplink (hypervisor air gap)</span>
+                   │
+<span class="r">  ┌────────────────┴──────────────────────────┐</span>
+<span class="r">  │  a2billing-01   a2billing-02              │</span>  <span class="dim">← Real-time call authorization engine</span>
+<span class="r">  │  mariadb-01     mariadb-02               │</span>  <span class="dim">← CDR, subscriber, rate table storage</span>
+<span class="r">  └───────────────────────────────────────────┘</span>
+          │                   │
+<span class="c">  SYNC — MTU 9000 — no uplink</span>       <span class="c">SYNC — MTU 9000 — no uplink</span>
+          │                   │
+<span class="c">  ┌───────┴───────────────────┴───────┐</span>
+<span class="c">  │  Kamailio cluster heartbeat       │</span>
+<span class="c">  │  MariaDB primary→replica stream   │</span>
+<span class="c">  └───────────────────────────────────┘</span>
 
+        <span class="y">monitor-01 — OSSEC server · Zabbix · OpenSearch · Apache</span>
+        <span class="y">Observes all VMs via Voice + Data internal networks</span></div>
+
+  <!-- ───── GRE / BGP TOPOLOGIES ───── -->
+  <h2>Planned: GRE Tunnel Topology</h2>
+
+  <p style="color:#607080;margin-bottom:16px;">Phase 7 extends the stack across sites using GRE tunnels at the SIP proxy layer. Each Kamailio node is a GRE leaf endpoint. SIP/RTP rides the GRE tunnel (low overhead, no encryption penalty on the data plane). WireGuard handles the control and management plane separately with full encryption.</p>
+
+  <div class="arch-box"><span class="w">  Local datacenter                          Cloud / Remote site</span>
+
+<span class="g">  [kamailio-01]</span>──GRE tunnel──────────────►<span class="g">[cloud-kamailio-01]</span>
+<span class="g">  [kamailio-02]</span>──GRE tunnel──────────────►<span class="g">[cloud-kamailio-02]</span>
+       │                                          │
+  <span class="c">WireGuard</span>                                  <span class="c">WireGuard</span>
+  <span class="dim">(mgmt plane)                              (mgmt plane)</span>
+
+  <span class="dim">Data plane:</span>  <span class="y">GRE</span>   ← SIP/RTP, high throughput, minimal overhead
+  <span class="dim">Ctrl plane:</span>  <span class="c">WireGuard</span> ← encrypted, authenticated, low bandwidth
+
+  <span class="dim">GRE allows SIP/RTP to traverse without per-packet crypto overhead.</span>
+  <span class="dim">WireGuard provides management isolation: config, monitoring, SSH.</span>
+  <span class="dim">DNS failover (Cloudflare) switches SIP registration on site loss.</span></div>
+
+  <!-- ───── BGP LEAF-SPINE ───── -->
+  <h2>Planned: BGP Leaf-Spine Routing Fabric</h2>
+
+  <p style="color:#607080;margin-bottom:16px;">Phase 9 introduces a BGP routing fabric using CSR1000v virtual routers as spine nodes. Each SIP proxy cluster becomes a BGP leaf — advertising its SIP prefix routes. ECMP across spine nodes provides carrier-grade load balancing and sub-second route convergence on failures.</p>
+
+  <div class="arch-box"><span class="dim">                    BGP Spine Layer</span>
+
+          <span class="p">[CSR Spine-01]</span>──iBGP──<span class="p">[CSR Spine-02]</span>
+           /       \              /       \
+      eBGP          eBGP     eBGP          eBGP
+
+<span class="g">[kamailio-01]</span>    <span class="g">[kamailio-02]</span>    <span class="b">[asterisk-01..03]</span>
+<span class="dim">AS 65001          AS 65001          AS 65002</span>
+<span class="dim">leaf              leaf              leaf</span>
+
+  <span class="dim">Each Kamailio leaf advertises:</span>  <span class="y">SIP route prefix for its carrier trunks</span>
+  <span class="dim">Spine provides:</span>                <span class="c">ECMP across both Kamailio nodes</span>
+  <span class="dim">On leaf failure:</span>               <span class="g">BGP withdraws route → traffic shifts in &lt;1s</span>
+
+  <span class="dim">CSR1000v (Cisco IOS-XE virtual router) runs as a VM on the same</span>
+  <span class="dim">hypervisor. Existing CSR VMs can be cloned and configured as</span>
+  <span class="dim">spine/leaf nodes without additional hardware.</span></div>
+
+  <div class="note-box">
+    <strong style="color:#90b0d0;">Why BGP for a telecom stack?</strong><br>
+    Kamailio already performs per-call routing (LCR). BGP adds <em>per-prefix</em> routing at the network layer — two different decisions. LCR selects the cheapest carrier for a destination number. BGP selects the best path for packets to reach that carrier's SIP endpoint. Combined, you get routing decisions at every layer: IP, SIP, and call.
+  </div>
+
+  <!-- ───── VM STACK ───── -->
   <h2>VM Stack</h2>
   <table>
-    <tr>
-      <th>VM</th>
-      <th>Role</th>
-      <th>Networks</th>
-      <th>Phase 1</th>
-    </tr>
+    <tr><th>VM</th><th>Role</th><th>Networks</th><th>Phase 2</th></tr>
     <tr>
       <td><code>kamailio-01</code></td>
-      <td>SIP Proxy — primary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-sync">Sync</span></td>
-      <td class="status-done">✓ Done</td>
+      <td>SIP Proxy — primary (LCR + fraud)</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-sync">Sync</span></td>
+      <td class="status-progress">Monitoring</td>
     </tr>
     <tr>
       <td><code>kamailio-02</code></td>
-      <td>SIP Proxy — secondary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-sync">Sync</span></td>
-      <td class="status-done">✓ Done</td>
+      <td>SIP Proxy — secondary (failover)</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-sync">Sync</span></td>
+      <td class="status-done">✓ Agents</td>
     </tr>
     <tr>
       <td><code>asterisk-01</code></td>
       <td>PBX — primary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-done">✓ Agents</td>
     </tr>
     <tr>
       <td><code>asterisk-02</code></td>
       <td>PBX — secondary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-done">✓ Agents</td>
     </tr>
     <tr>
       <td><code>asterisk-03</code></td>
       <td>PBX — tertiary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-done">✓ Agents</td>
     </tr>
     <tr>
       <td><code>a2billing-01</code></td>
-      <td>Billing — primary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td>Billing — primary (real-time auth)</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-done">✓ Agents</td>
     </tr>
     <tr>
       <td><code>a2billing-02</code></td>
       <td>Billing — secondary</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-progress">Recovering</td>
     </tr>
     <tr>
       <td><code>mariadb-01</code></td>
       <td>Database — primary</td>
-      <td><span class="network-badge net-data">Data</span><span class="network-badge net-sync">Sync</span></td>
-      <td class="status-done">✓ Done</td>
+      <td><span class="net-badge net-data">Data</span><span class="net-badge net-sync">Sync</span></td>
+      <td class="status-pending">No ext NIC</td>
     </tr>
     <tr>
       <td><code>mariadb-02</code></td>
-      <td>Database — secondary</td>
-      <td><span class="network-badge net-data">Data</span><span class="network-badge net-sync">Sync</span></td>
-      <td class="status-done">✓ Done</td>
+      <td>Database — replica</td>
+      <td><span class="net-badge net-data">Data</span><span class="net-badge net-sync">Sync</span></td>
+      <td class="status-pending">No ext NIC</td>
     </tr>
     <tr>
       <td><code>monitor-01</code></td>
-      <td>OSSEC + Zabbix</td>
-      <td><span class="network-badge net-ext">External</span><span class="network-badge net-voice">Voice</span><span class="network-badge net-data">Data</span></td>
-      <td class="status-done">✓ Done</td>
+      <td>OSSEC · Zabbix · OpenSearch</td>
+      <td><span class="net-badge net-ext">Ext</span><span class="net-badge net-voice">Voice</span><span class="net-badge net-data">Data</span></td>
+      <td class="status-progress">Installing</td>
     </tr>
   </table>
 
+  <!-- ───── NETWORK DESIGN ───── -->
   <h2>Network Design</h2>
   <table>
-    <tr><th>Network</th><th>Uplink</th><th>MTU</th><th>Purpose</th></tr>
-    <tr><td>Management</td><td>Physical NIC</td><td>1500</td><td>Hypervisor management — not reachable by VMs</td></tr>
-    <tr><td>External</td><td>Physical NIC</td><td>1500</td><td>SIP trunks, internet, web portals</td></tr>
-    <tr><td><strong>Voice</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>Kamailio ↔ Asterisk internal SIP/RTP</td></tr>
-    <tr><td><strong>Data</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>MariaDB ↔ A2Billing ↔ Asterisk</td></tr>
-    <tr><td><strong>Sync</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>DB replication + cluster heartbeat</td></tr>
+    <tr><th>Network</th><th>Physical Uplink</th><th>MTU</th><th>IP Range</th><th>Purpose</th></tr>
+    <tr><td>Management</td><td>Physical NIC</td><td>1500</td><td>&lt;mgmt-net&gt;</td><td>Hypervisor management — invisible to VMs</td></tr>
+    <tr><td>External</td><td>Physical NIC</td><td>1500</td><td>&lt;ext-net&gt;</td><td>SIP trunks, internet, customer portals</td></tr>
+    <tr><td><strong>Voice</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>10.10.10.0/24</td><td>Kamailio ↔ Asterisk internal SIP/RTP</td></tr>
+    <tr><td><strong>Data</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>10.20.20.0/24</td><td>MariaDB ↔ A2Billing ↔ Asterisk CDR</td></tr>
+    <tr><td><strong>Sync</strong></td><td><em>None (isolated)</em></td><td><strong>9000</strong></td><td>10.30.30.0/24</td><td>DB replication + Kamailio cluster heartbeat</td></tr>
   </table>
 
-  <h2>Build Phases</h2>
-
-  <div style="border:1px solid #1e1e1e;border-radius:8px;overflow:hidden;margin:16px 0;">
-    <div class="phase-row">
-      <div class="phase-num phase-done">1</div>
-      <div class="phase-label">Hypervisor &amp; VMs</div>
-      <div class="phase-scope status-done">Complete — vSwitches, golden image, 10 VMs cloned, configured, SYNC NICs</div>
+  <!-- ───── MONITORING ───── -->
+  <h2>Security &amp; Monitoring Stack</h2>
+  <div class="grid">
+    <div class="card">
+      <h4>OSSEC HIDS</h4>
+      <p>Server on monitor-01, agents on all 9 VMs. Real-time file integrity monitoring of /etc, /bin, /sbin, /usr/bin/sbin. Active response auto-blocks attacking IPs within seconds via local firewall rules. Alerts on Level 7+ events via email.</p>
     </div>
-    <div class="phase-row">
-      <div class="phase-num phase-active">2</div>
-      <div class="phase-label">Security &amp; Monitoring</div>
-      <div class="phase-scope status-progress">In progress — OSSEC server, Zabbix, agents on all VMs</div>
+    <div class="card">
+      <h4>Zabbix 6.4</h4>
+      <p>Zabbix Agent2 on all VMs. ISP connectivity monitoring (ping loss to external resolver). SIP health via OPTIONS ping to each Kamailio node. Database connection checks. CPU/RAM/disk thresholds with pre-emptive alerts before service impact.</p>
     </div>
-    <div class="phase-row">
-      <div class="phase-num phase-pending">3</div>
-      <div class="phase-label">Database Layer</div>
-      <div class="phase-scope">MariaDB primary/replica replication via Sync network</div>
+    <div class="card">
+      <h4>OpenSearch (Planned)</h4>
+      <p>Single-node OpenSearch on monitor-01 aggregates logs from all VMs via Filebeat — OSSEC alerts, Kamailio SIP logs, Asterisk CDR, Apache access logs, auth.log. OpenSearch Dashboards provides full-text search and visual analysis across the stack.</p>
     </div>
-    <div class="phase-row">
-      <div class="phase-num phase-pending">4</div>
-      <div class="phase-label">SIP Proxy (Kamailio)</div>
-      <div class="phase-scope">LCR, dispatcher, fraud detection, TLS, cluster</div>
-    </div>
-    <div class="phase-row">
-      <div class="phase-num phase-pending">5</div>
-      <div class="phase-label">PBX (Asterisk)</div>
-      <div class="phase-scope">PJSIP, dialplan, CDR, A2Billing AGI, call recording</div>
-    </div>
-    <div class="phase-row">
-      <div class="phase-num phase-pending">6</div>
-      <div class="phase-label">Billing (A2Billing)</div>
-      <div class="phase-scope">Billing engine, rate tables, customer portal</div>
-    </div>
-    <div class="phase-row">
-      <div class="phase-num phase-pending">7</div>
-      <div class="phase-label">Cloud Integration</div>
-      <div class="phase-scope">WireGuard VPN tunnel, SIP federation, DNS failover</div>
-    </div>
-    <div class="phase-row" style="border-bottom:none;">
-      <div class="phase-num phase-pending">8</div>
-      <div class="phase-label">VoIP Phones</div>
-      <div class="phase-scope">Phone VLANs, QoS (DSCP/802.1p), SIP registration</div>
+    <div class="card">
+      <h4>Cisco Firewall Segmentation (Planned)</h4>
+      <p>Zone-based firewall between External, Voice, Data, and Sync segments. VMs can't communicate across zones without explicit permit rules. Complements the hypervisor air gap — software firewalling above the vSwitch layer for defense in depth.</p>
     </div>
   </div>
 
+  <!-- ───── KEY CONCEPTS ───── -->
   <h2>Key Concepts</h2>
-
   <div class="grid">
     <div class="card">
       <h4>Least Cost Routing (LCR)</h4>
-      <p>Kamailio evaluates registered carrier rate tables on every outbound call and routes to the cheapest carrier for the destination prefix. Daily automated CSV import keeps rates current. Automatic failover to next cheapest if carrier is unreachable.</p>
+      <p>Kamailio evaluates carrier rate tables on every outbound call and routes to the cheapest carrier for the destination E.164 prefix. Daily automated CSV import refreshes rates. Automatic failover to next cheapest if the primary carrier is unreachable or returns 503.</p>
     </div>
     <div class="card">
-      <h4>Real-time Billing (A2Billing)</h4>
-      <p>Every call triggers an AGI script in Asterisk that queries A2Billing before connecting. Insufficient balance = immediate rejection. Sub-second decision over the isolated Data network.</p>
+      <h4>Real-time Billing — AGI</h4>
+      <p>Every call triggers an AGI (Asterisk Gateway Interface) script that queries A2Billing before connecting. Sub-second authorization decision over the isolated Data network. Insufficient balance results in immediate rejection before ringing — no CDR post-processing lag.</p>
     </div>
     <div class="card">
-      <h4>Isolated vSwitch Air Gap</h4>
-      <p>Voice, Data, and Sync networks have no physical uplink — not a firewall rule, not an ACL. No wire connects them to the internet. MariaDB nodes are physically unreachable from outside regardless of any software configuration.</p>
+      <h4>Hypervisor Air Gap</h4>
+      <p>Voice, Data, and Sync have no physical NIC attached. This is a physical impossibility, not a firewall rule. No wire connects MariaDB to the outside world. Even a misconfigured iptables or a kernel exploit cannot reach the database from the internet.</p>
     </div>
     <div class="card">
       <h4>MTU 9000 Jumbo Frames</h4>
-      <p>Internal networks run at MTU 9000 — 6× larger packets than standard Ethernet. Fewer interrupts per MB transferred means measurable CPU reduction on MariaDB replication, A2Billing CDR writes, and SIP/RTP inter-service flows.</p>
+      <p>Standard 1500-byte MTU was designed for shared Ethernet in 1982. On an isolated virtual switch, there is no physical constraint. Jumbo frames deliver 6× payload per packet, fewer interrupts per MB, measurable reduction in CPU cycles on MariaDB replication streams.</p>
+    </div>
+    <div class="card">
+      <h4>Thin Clone + Machine ID Reset</h4>
+      <p>vmkfstools clones at metadata level — a 30GB VM clones in seconds, not minutes, on NVMe storage. Pages are copy-on-write. Critical: systemd uses /etc/machine-id as DHCP client ID. All clones must reset it via systemd-machine-id-setup to avoid identity collisions.</p>
+    </div>
+    <div class="card">
+      <h4>ProxyJump for ARP Conflicts</h4>
+      <p>A managed switch VLAN SVI can occupy a VM's intended IP, winning the ARP race. The VM becomes unreachable from outside but is still reachable from a peer VM on the same L2 segment. SSH ProxyCommand tunnels through the peer to access and reconfigure the conflicted VM.</p>
     </div>
   </div>
 
+  <!-- ───── CODEC ───── -->
   <h2>Codec Strategy</h2>
   <table>
-    <tr><th>Codec</th><th>Standard</th><th>Used For</th></tr>
-    <tr><td>G.711 μ-law (ulaw)</td><td>North American PSTN</td><td>All carrier termination in NANP region</td></tr>
-    <tr><td>G.711 A-law (alaw)</td><td>European PSTN</td><td>International termination</td></tr>
-    <tr><td>G.722</td><td>HD Voice (16 kHz)</td><td>Internal LAN VoIP phones</td></tr>
+    <tr><th>Codec</th><th>Standard</th><th>Where Used</th><th>Why</th></tr>
+    <tr><td>G.711 μ-law</td><td>NANP PSTN (North America)</td><td>All carrier termination in North America</td><td>Mandatory for US/CA PSTN interconnect; no transcoding on external hops</td></tr>
+    <tr><td>G.711 A-law</td><td>ETSI PSTN (Europe/Intl)</td><td>International carrier termination</td><td>Standard codec for non-NANP carriers; passes through without modification</td></tr>
+    <tr><td>G.722</td><td>HD Voice — 16 kHz wideband</td><td>Internal VoIP phones on LAN</td><td>Zero PSTN interaction — HD voice is only relevant inside the LAN</td></tr>
   </table>
 
-  <p style="margin-top:24px;">
-    <a href="https://github.com/ikonstas70/telco-build">View full build log on GitHub →</a>
+  <!-- ───── PHASES ───── -->
+  <h2>Build Phases</h2>
+  <div class="phases-wrap">
+    <div class="phase-row">
+      <div class="phase-num p-done">1</div>
+      <div class="phase-info">
+        <div class="phase-title">Hypervisor &amp; VMs <span style="color:var(--green)">✓ Complete</span></div>
+        <div class="phase-desc">5 virtual networks (incl. 3 isolated at MTU 9000) · golden image · 9 thin-cloned VMs · SYNC NICs · machine-id reset · IP conflict resolution</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-active">2</div>
+      <div class="phase-info">
+        <div class="phase-title">Security &amp; Monitoring <span style="color:var(--yellow)">In progress</span></div>
+        <div class="phase-desc">OSSEC 3.7 server · Zabbix 6.4 server + Agent2 on all VMs · OpenSearch log aggregation · Cisco zone firewall segmentation</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">3</div>
+      <div class="phase-info">
+        <div class="phase-title">Database Layer</div>
+        <div class="phase-desc">MariaDB secure install · multi-database setup (kamailio_db, asterisk_cdr, a2billing_db) · primary/replica replication over SYNC · scheduled backups</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">4</div>
+      <div class="phase-info">
+        <div class="phase-title">SIP Proxy — Kamailio</div>
+        <div class="phase-desc">kamailio.cfg · database backend · SIP digest auth · LCR (lcr module) · dispatcher to Asterisk · fraud detection (pike) · TLS/SIPS · active/active clustering</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">5</div>
+      <div class="phase-info">
+        <div class="phase-title">PBX — Asterisk</div>
+        <div class="phase-desc">PJSIP trunks to Kamailio · CDR to MariaDB · A2Billing AGI pre-call authorization · IVR · voicemail · conferencing · call recording (MixMonitor)</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">6</div>
+      <div class="phase-info">
+        <div class="phase-title">Billing — A2Billing</div>
+        <div class="phase-desc">Schema import · admin + customer accounts · wholesale rate table import · Asterisk AGI bridge · customer self-service portal · automated monthly invoicing</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">7</div>
+      <div class="phase-info">
+        <div class="phase-title">Cloud Integration</div>
+        <div class="phase-desc">WireGuard VPN (mgmt plane) · GRE tunnels (SIP/RTP data plane) to cloud Kamailio · SIP federation · MariaDB cross-site replication for DR · Cloudflare DNS failover</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-pend">8</div>
+      <div class="phase-info">
+        <div class="phase-title">Phones &amp; Segmentation</div>
+        <div class="phase-desc">VoIP phone VLANs on Cisco switch · QoS 802.1p/DSCP voice priority · SIP registration to Kamailio · Cisco zone-based firewall between segments</div>
+      </div>
+    </div>
+    <div class="phase-row">
+      <div class="phase-num p-plan">9</div>
+      <div class="phase-info">
+        <div class="phase-title">BGP Routing Fabric <span style="color:var(--purple)">Planned</span></div>
+        <div class="phase-desc">CSR1000v spine nodes · eBGP between leaf (Kamailio) and spine · ECMP load balancing · sub-second convergence · SIP prefix advertisements per site</div>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin-top:28px;color:#506070;">
+    <a href="https://github.com/ikonstas70/telco-build">Full build log with commands and configs on GitHub →</a>
   </p>
 
 </div>
 
 <footer>
-  <span>Educational build log — all values sanitized, placeholders replace environment-specific data</span>
+  <span>Educational build log — all IPs, hostnames, and hardware identifiers are placeholders</span>
   <a href="https://github.com/ikonstas70/telco-build">github.com/ikonstas70/telco-build</a>
 </footer>
 
